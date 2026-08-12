@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -17,18 +18,33 @@ func NewProductHandler(svc *service.ProductService) *ProductHandler {
 }
 
 func (h *ProductHandler) UpdateQuantity(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(r.URL.Query().Get("id"))
+	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
 
 	var req struct {
 		Delta int `json:"delta"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
 
-	err := h.svc.UpdateQuantity(r.Context(), uint(id), req.Delta)
+	err = h.svc.UpdateQuantity(r.Context(), uint(id), req.Delta)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		switch {
+		case errors.Is(err, service.ErrBusy):
+			http.Error(w, err.Error(), http.StatusConflict)
+		case errors.Is(err, service.ErrInsufficient):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		default:
+			http.Error(w, "internal error", http.StatusInternalServerError)
+		}
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
