@@ -1,9 +1,13 @@
 package repository
 
 import (
+	"errors"
+
 	"github.com/IGMA-IGMA/go-distributed-lock/internal/model"
 	"gorm.io/gorm"
 )
+
+var ErrVersionConflict = errors.New("version conflict")
 
 type ProductRepository struct {
 	db *gorm.DB
@@ -19,8 +23,21 @@ func (r *ProductRepository) GetByID(id uint) (*model.Product, error) {
 	return &p, err
 }
 
-func (r *ProductRepository) UpdateQuantity(id uint, delta int) error {
-	return r.db.Model(&model.Product{}).
-		Where("id = ?", id).
-		Update("quantity", gorm.Expr("quantity + ?", delta)).Error
+func (r *ProductRepository) UpdateQuantity(id uint, delta int, version int) error {
+	result := r.db.Model(&model.Product{}).
+		Where("id = ? AND version = ?", id, version).
+		Updates(map[string]interface{}{
+			"quantity": gorm.Expr("quantity + ?", delta),
+			"version":  gorm.Expr("version + 1"),
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return ErrVersionConflict
+	}
+
+	return nil
 }
