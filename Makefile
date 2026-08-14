@@ -1,13 +1,10 @@
-.PHONY: build run test docker-up docker-down migrate
-
-build:
-	go build -o bin/server ./cmd/server
+.PHONY: run build docker-up docker-down
 
 run:
 	go run ./cmd/server
 
-test:
-	go test ./... -v
+build:
+	go build -o bin/server ./cmd/server
 
 docker-up:
 	docker-compose -f docker/docker-compose.yml up -d
