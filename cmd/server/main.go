@@ -1,30 +1,6 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"time"
-
-	"github.com/redis/go-redis/v9"
-)
-
-func main() {
-	rdb := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-	})
-
-	ctx := context.Background()
-
-	ok, err := rdb.SetNX(ctx, "test:lock", "1", 10*time.Second).Result()
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("lock acquired:", ok)
-}
-package main
-
-import (
 	"log"
 	"net/http"
 
@@ -43,6 +19,13 @@ func main() {
 	}
 
 	db.AutoMigrate(&model.Product{})
+
+	var count int64
+	db.Model(&model.Product{}).Count(&count)
+	if count == 0 {
+		db.Create(&model.Product{Name: "Laptop", Quantity: 10})
+		db.Create(&model.Product{Name: "Phone", Quantity: 20})
+	}
 
 	rdb := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
