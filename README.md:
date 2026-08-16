@@ -1,0 +1,11 @@
+# go-distributed-lock
+
+## Запуск
+
+make docker-up
+make run
+
+## API
+
+POST /products/update-quantity?id=1
+{"delta": -1}
