@@ -2,13 +2,13 @@ package main
 
 import (
 	"log"
-	"net/http"
 
 	"github.com/IGMA-IGMA/go-distributed-lock/internal/database"
 	"github.com/IGMA-IGMA/go-distributed-lock/internal/handler"
 	"github.com/IGMA-IGMA/go-distributed-lock/internal/model"
 	"github.com/IGMA-IGMA/go-distributed-lock/internal/repository"
 	"github.com/IGMA-IGMA/go-distributed-lock/internal/service"
+	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -35,8 +35,9 @@ func main() {
 	svc := service.NewProductService(repo, rdb)
 	h := handler.NewProductHandler(svc)
 
-	http.HandleFunc("/products/update-quantity", h.UpdateQuantity)
+	r := gin.Default()
+	r.POST("/products/:id/update-quantity", h.UpdateQuantity)
 
 	log.Println("server on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(r.Run(":8080"))
 }
