@@ -12,8 +12,10 @@ import (
 )
 
 var (
-	ErrBusy         = errors.New("resource is busy")
-	ErrInsufficient = errors.New("insufficient quantity")
+	ErrBusy            = errors.New("resource is busy")
+	ErrInsufficient    = errors.New("insufficient quantity")
+	ErrVersionConflict = errors.New("version conflict")
+	ErrProductNotFound = errors.New("product not found")
 )
 
 type ProductService struct {
@@ -28,6 +30,9 @@ func NewProductService(repo *repository.ProductRepository, rdb *redis.Client) *P
 func (s *ProductService) UpdateQuantity(ctx context.Context, id uint, delta int) error {
 	product, err := s.repo.GetByID(id)
 	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return ErrProductNotFound
+		}
 		return err
 	}
 
@@ -35,9 +40,10 @@ func (s *ProductService) UpdateQuantity(ctx context.Context, id uint, delta int)
 		return ErrInsufficient
 	}
 
-	lock := lock.NewDistributedLock(s.rdb, fmt.Sprintf("lock:product:%d", id), 10*time.Second)
+	lockKey := fmt.Sprintf("lock:product:%d", id)
+	distributedLock := lock.NewDistributedLock(s.rdb, lockKey, 10*time.Second)
 
-	acquired, err := lock.TryLock(ctx)
+	acquired, err := distributedLock.TryLock(ctx)
 	if err != nil {
 		return err
 	}
@@ -46,7 +52,15 @@ func (s *ProductService) UpdateQuantity(ctx context.Context, id uint, delta int)
 		return ErrBusy
 	}
 
-	defer lock.Unlock(context.Background())
+	defer distributedLock.Unlock(context.Background())
 
-	return s.repo.UpdateQuantity(id, delta)
+	err = s.repo.UpdateQuantity(id, delta, product.Version)
+	if err != nil {
+		if errors.Is(err, repository.ErrVersionConflict) {
+			return ErrVersionConflict
+		}
+		return err
+	}
+
+	return nil
 }
