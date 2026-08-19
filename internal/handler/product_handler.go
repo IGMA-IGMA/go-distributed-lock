@@ -1,12 +1,11 @@
 package handler
 
 import (
-	"encoding/json"
-	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/IGMA-IGMA/go-distributed-lock/internal/service"
+	"github.com/gin-gonic/gin"
 )
 
 type ProductHandler struct {
@@ -17,34 +16,37 @@ func NewProductHandler(svc *service.ProductService) *ProductHandler {
 	return &ProductHandler{svc: svc}
 }
 
-func (h *ProductHandler) UpdateQuantity(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+type UpdateQuantityRequest struct {
+	Delta int `json:"delta" binding:"required"`
+}
+
+func (h *ProductHandler) UpdateQuantity(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
 
-	var req struct {
-		Delta int `json:"delta"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid body", http.StatusBadRequest)
+	var req UpdateQuantityRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
 		return
 	}
 
-	err = h.svc.UpdateQuantity(r.Context(), uint(id), req.Delta)
+	err = h.svc.UpdateQuantity(c.Request.Context(), uint(id), req.Delta)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrBusy):
-			http.Error(w, err.Error(), http.StatusConflict)
-		case errors.Is(err, service.ErrInsufficient):
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		switch err {
+		case service.ErrBusy:
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		case service.ErrInsufficient:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case service.ErrVersionConflict:
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		default:
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		}
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
