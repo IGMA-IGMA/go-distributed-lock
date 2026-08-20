@@ -7,7 +7,10 @@ import (
 	"gorm.io/gorm"
 )
 
-var ErrVersionConflict = errors.New("version conflict")
+var (
+	ErrNotFound       = errors.New("not found")
+	ErrVersionConflict = errors.New("version conflict")
+)
 
 type ProductRepository struct {
 	db *gorm.DB
@@ -20,7 +23,13 @@ func NewProductRepository(db *gorm.DB) *ProductRepository {
 func (r *ProductRepository) GetByID(id uint) (*model.Product, error) {
 	var p model.Product
 	err := r.db.First(&p, id).Error
-	return &p, err
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
 }
 
 func (r *ProductRepository) UpdateQuantity(id uint, delta int, version int) error {
