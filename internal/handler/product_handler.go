@@ -42,6 +42,8 @@ func (h *ProductHandler) UpdateQuantity(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		case service.ErrVersionConflict:
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		case service.ErrProductNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		}
