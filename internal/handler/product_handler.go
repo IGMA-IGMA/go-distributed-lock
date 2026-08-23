@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 
@@ -8,11 +9,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type ProductHandler struct {
-	svc *service.ProductService
+type ProductService interface {
+	UpdateQuantity(ctx context.Context, id uint, delta int) error
 }
 
-func NewProductHandler(svc *service.ProductService) *ProductHandler {
+type ProductHandler struct {
+	svc ProductService
+}
+
+func NewProductHandler(svc ProductService) *ProductHandler {
 	return &ProductHandler{svc: svc}
 }
 

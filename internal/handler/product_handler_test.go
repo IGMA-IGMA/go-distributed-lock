@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -23,8 +24,7 @@ func (m *mockService) UpdateQuantity(ctx context.Context, id uint, delta int) er
 func TestUpdateQuantity_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	mock := &mockService{err: nil}
-	h := NewProductHandler(mock)
+	h := NewProductHandler(&mockService{err: nil})
 
 	router := gin.New()
 	router.POST("/products/:id/update-quantity", h.UpdateQuantity)
@@ -46,8 +46,7 @@ func TestUpdateQuantity_Success(t *testing.T) {
 func TestUpdateQuantity_Busy(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	mock := &mockService{err: service.ErrBusy}
-	h := NewProductHandler(mock)
+	h := NewProductHandler(&mockService{err: service.ErrBusy})
 
 	router := gin.New()
 	router.POST("/products/:id/update-quantity", h.UpdateQuantity)
@@ -65,8 +64,7 @@ func TestUpdateQuantity_Busy(t *testing.T) {
 func TestUpdateQuantity_InvalidBody(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	mock := &mockService{err: nil}
-	h := NewProductHandler(mock)
+	h := NewProductHandler(&mockService{err: nil})
 
 	router := gin.New()
 	router.POST("/products/:id/update-quantity", h.UpdateQuantity)
