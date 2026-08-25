@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/IGMA-IGMA/go-distributed-lock/internal/service"
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,19 +21,16 @@ func (m *mockService) UpdateQuantity(ctx context.Context, id uint, delta int) er
 }
 
 func TestUpdateQuantity_Success(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	h := NewProductHandler(&mockService{err: nil})
 
-	router := gin.New()
-	router.POST("/products/:id/update-quantity", h.UpdateQuantity)
-
 	body := `{"delta": -1}`
-	req, _ := http.NewRequest("POST", "/products/1/update-quantity", bytes.NewBufferString(body))
+	req := httptest.NewRequest("POST", "/products/1/update-quantity", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+
+	// Вызываем напрямую без Gin router
+	h.UpdateQuantity(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -44,36 +40,28 @@ func TestUpdateQuantity_Success(t *testing.T) {
 }
 
 func TestUpdateQuantity_Busy(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	h := NewProductHandler(&mockService{err: service.ErrBusy})
 
-	router := gin.New()
-	router.POST("/products/:id/update-quantity", h.UpdateQuantity)
-
 	body := `{"delta": -1}`
-	req, _ := http.NewRequest("POST", "/products/1/update-quantity", bytes.NewBufferString(body))
+	req := httptest.NewRequest("POST", "/products/1/update-quantity", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+
+	h.UpdateQuantity(w, req)
 
 	assert.Equal(t, http.StatusConflict, w.Code)
 }
 
 func TestUpdateQuantity_InvalidBody(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	h := NewProductHandler(&mockService{err: nil})
 
-	router := gin.New()
-	router.POST("/products/:id/update-quantity", h.UpdateQuantity)
-
-	req, _ := http.NewRequest("POST", "/products/1/update-quantity", bytes.NewBufferString("invalid"))
+	req := httptest.NewRequest("POST", "/products/1/update-quantity", bytes.NewBufferString("invalid"))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+
+	h.UpdateQuantity(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
