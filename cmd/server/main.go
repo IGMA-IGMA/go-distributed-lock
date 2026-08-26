@@ -36,7 +36,7 @@ func main() {
 	h := handler.NewProductHandler(svc)
 
 	r := gin.Default()
-	r.POST("/products/:id/update-quantity", h.UpdateQuantity)
+	r.POST("/products/:id/update-quantity", h.GinHandler)
 
 	log.Println("server on :8080")
 	log.Fatal(r.Run(":8080"))
