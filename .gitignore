@@ -7,3 +7,8 @@ vendor/
 .vscode/
 .idea/
 .DS_Store
+
+# Temporary scripts
+*.sh
+change_*.sh
+final_fix*.sh
